@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard de Conteúdo</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --brand:#8B2152;--brand-dark:#1B2A35;--brand-light:#f5eaf0;--brand-border:#d4a0bc;
+  --bg:#f8f7f4;--surface:#ffffff;--surface2:#f0ede6;
+  --border:rgba(0,0,0,0.08);--text:#1a1a1a;--text-muted:rgba(26,26,26,0.55);--text-dim:rgba(26,26,26,0.3);
+  --warn:#b45309;--danger:#991b1b;--success:#1B2A35;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:1rem;transition:opacity .5s}
+#loading.hidden{opacity:0;pointer-events:none}
+.loader-ring{width:40px;height:40px;border:3px solid var(--brand-light);border-top-color:var(--brand);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader-text{font-size:.85rem;color:var(--text-muted)}
+
+header{background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.header-inner{max-width:1300px;margin:0 auto;padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:64px;gap:1rem;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--brand);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;color:white;flex-shrink:0}
+.brand-name{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;color:var(--text)}
+.brand-sub{font-size:.72rem;color:var(--text-muted)}
+.header-right{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+
+.tabs{display:flex;background:var(--surface2);border-radius:10px;padding:3px;gap:2px}
+.tab{font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:500;padding:5px 14px;border:none;border-radius:8px;cursor:pointer;color:var(--text-muted);background:transparent;transition:all .2s}
+.tab.active{background:var(--surface);color:var(--brand);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.tab:hover:not(.active):not(.disabled){color:var(--text)}
+.tab.disabled{opacity:.35;cursor:not-allowed}
+
+.period-wrap{position:relative}
+.period-btn{font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:500;color:var(--brand);background:var(--brand-light);padding:7px 14px;border-radius:20px;border:1px solid var(--brand-border);cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.period-btn:hover{background:#edd5e5}
+.period-drop{position:absolute;top:calc(100% + 8px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:14px;min-width:200px;z-index:500;display:none;box-shadow:0 8px 24px rgba(0,0,0,.12);overflow:hidden}
+.period-drop.open{display:block}
+.period-hdr{background:var(--brand);color:white;text-align:center;padding:10px 16px;font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+.period-item{padding:11px 16px;font-size:.85rem;cursor:pointer;color:var(--text);border-bottom:1px solid var(--border);transition:background .15s}
+.period-item:last-child{border-bottom:none}
+.period-item:hover{background:var(--brand-light)}
+.period-item.active{color:var(--brand);font-weight:600;background:var(--brand-light)}
+
+main{max-width:1300px;margin:0 auto;padding:2rem}
+.sl{font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:.875rem;display:flex;align-items:center;gap:.75rem}
+.sl::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.kg{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:1.5rem}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1rem 1.2rem;position:relative;transition:transform .2s,border-color .2s}
+.kpi:hover{transform:translateY(-2px);border-color:var(--brand-border)}
+.kl{font-size:.72rem;color:var(--text-muted);margin-bottom:.4rem;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.kv{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:700;color:var(--text);line-height:1;margin-bottom:.25rem}
+.ks{font-size:.7rem}
+.good{color:var(--success)}.warn{color:var(--warn)}.bad{color:var(--danger)}.neu{color:var(--text-dim)}
+
+.info-btn{width:15px;height:15px;border-radius:50%;background:var(--surface2);border:1px solid rgba(0,0,0,0.1);cursor:pointer;font-size:9px;font-weight:700;color:var(--text-dim);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;padding:0;line-height:1}
+.info-btn:hover{background:var(--brand);color:white;border-color:var(--brand)}
+.kpi-tip{position:absolute;bottom:calc(100% + 8px);left:0;background:var(--brand-dark);color:white;border-radius:10px;padding:12px 14px;font-size:.72rem;line-height:1.5;width:230px;z-index:999;display:none;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,0.25)}
+.kpi-tip::after{content:'';position:absolute;top:100%;left:20px;border:6px solid transparent;border-top-color:var(--brand-dark)}
+.kpi-tip.show{display:block}
+.tip-t{font-weight:600;font-size:.75rem;margin-bottom:5px;color:#f5eaf0}
+.tip-b{font-size:.7rem;color:rgba(255,255,255,.8);line-height:1.5}
+
+.sep{border:none;border-top:1px solid var(--border);margin:0 0 1.5rem}
+.cg2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.5rem}
+.cc{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.25rem}
+.ct{font-family:'Syne',sans-serif;font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:3px}
+.cs{font-size:.72rem;color:var(--text-muted);margin-bottom:1rem}
+
+.funil-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.25rem;margin-bottom:1.5rem}
+.funil-wrap{display:flex;gap:3rem;align-items:center;padding-top:1rem}
+
+.rg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:1.5rem}
+.rc{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1rem;position:relative}
+.rn{font-size:.72rem;font-weight:500;color:var(--text-muted);margin-bottom:2px;display:flex;align-items:center;gap:4px}
+.rr{font-size:.65rem;color:var(--text-dim)}
+.rv{font-size:1.4rem;font-weight:700;margin:6px 0}
+.bt{height:4px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.bf{height:100%;border-radius:4px}
+
+.posts-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;margin-bottom:1.5rem}
+.phone-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
+.phone{width:100%;aspect-ratio:9/16;background:var(--surface2);border-radius:18px;border:3px solid var(--brand-dark);position:relative;overflow:hidden;transition:transform .2s}
+.phone:hover{transform:scale(1.02)}
+.phone-notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:40%;height:6px;background:var(--brand-dark);border-radius:0 0 6px 6px;z-index:2}
+.phone-img{width:100%;height:100%;object-fit:cover}
+.phone-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;background:var(--brand-light)}
+.phone-ph-txt{font-size:.65rem;color:var(--text-muted);text-align:center;padding:0 8px}
+.play-btn{position:absolute;bottom:10px;right:10px;width:28px;height:28px;border-radius:50%;background:rgba(139,33,82,.9);display:flex;align-items:center;justify-content:center;z-index:3}
+.play-icon{width:0;height:0;border-left:9px solid white;border-top:6px solid transparent;border-bottom:6px solid transparent;margin-left:2px}
+.pbadge{position:absolute;top:8px;left:8px;font-size:.6rem;font-weight:600;padding:2px 7px;border-radius:10px;z-index:3}
+.pb-reel{background:rgba(139,33,82,.9);color:white}
+.pb-carr{background:rgba(27,42,53,.9);color:white}
+.pb-foto{background:rgba(180,83,9,.9);color:white}
+.pm{width:100%;background:var(--brand-dark);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:5px}
+.pm-row{display:flex;justify-content:space-between;align-items:center}
+.pm-label{font-size:.6rem;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.04em}
+.pm-val{font-size:.75rem;font-weight:500;color:white}
+.pm-val.good{color:#9fe1cb}.pm-val.warn{color:#fcd34d}.pm-val.bad{color:#fca5a5}
+.post-name{font-size:.7rem;color:var(--text-muted);text-align:center;line-height:1.3;max-height:32px;overflow:hidden}
+.btn-ver{width:100%;font-size:.72rem;font-weight:500;padding:7px;border-radius:8px;border:none;background:var(--brand);color:white;cursor:pointer;text-align:center;text-decoration:none;display:block;transition:background .15s}
+.btn-ver:hover{background:#6b1940}
+
+.ig{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.5rem}
+.ic{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1rem 1.25rem}
+.tg{display:inline-block;font-size:.65rem;font-weight:600;padding:3px 9px;border-radius:20px;margin-bottom:8px}
+.tl{background:var(--brand-light);color:#5a1236;border:1px solid var(--brand-border)}
+.tt2{background:#e8ecf0;color:#1B2A35;border:1px solid #b0bec5}
+.tw{background:#fff3cd;color:#7c4f00;border:1px solid #ffd47e}
+.ta{background:#fee2e2;color:#7f1d1d;border:1px solid #fca5a5}
+.it{font-size:.8rem;color:var(--text);line-height:1.55}
+.empty{text-align:center;padding:2rem;color:var(--text-dim);font-size:.85rem}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.kpi,.cc,.rc,.ic,.phone-wrap{animation:fadeUp .35s ease both}
+@media(max-width:900px){.cg2,.rg,.ig{grid-template-columns:1fr 1fr}.posts-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){main{padding:1rem}.cg2,.rg,.ig,.posts-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="loader-ring"></div>
+  <div class="loader-text" id="loadMsg">Conectando ao Notion…</div>
+</div>
+
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <div class="avatar">RS</div>
+      <div>
+        <div class="brand-name">Ricardo Staffa</div>
+        <div class="brand-sub">Dashboard de Conteúdo</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="tabs">
+        <button class="tab active" onclick="setTipo('organico')">Orgânico</button>
+        <button class="tab" onclick="setTipo('impulsionado')">Impulsionado</button>
+        <button class="tab" onclick="setTipo('todos')">Todos</button>
+        <button class="tab disabled" title="Em breve">Tráfego Pago</button>
+      </div>
+      <div class="period-wrap">
+        <button class="period-btn" onclick="toggleDrop(event)">
+          <span id="pl">Todos os meses</span><span id="arr">▼</span>
+        </button>
+        <div class="period-drop" id="periodDrop">
+          <div class="period-hdr">Selecione o período</div>
+          <div id="monthList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main id="mainContent" style="opacity:0;transition:opacity .4s">
+
+  <p class="sl">Visão geral — posts</p>
+  <div class="kg" id="kpiPosts"></div>
+
+  <hr class="sep">
+  <p class="sl">Visão geral — perfil</p>
+  <div class="kg" id="kpiPerfil"></div>
+
+  <hr class="sep">
+  <p class="sl">Conversão</p>
+  <div class="funil-card">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;position:relative">
+      <div class="ct" style="margin-bottom:0">Funil de conversão</div>
+      <button class="info-btn" onclick="toggleTip('tipFunil',event)">?</button>
+      <div class="kpi-tip" id="tipFunil" style="bottom:auto;top:calc(100% + 8px);left:0"><div class="tip-t">Funil de conversão</div><div class="tip-b">Mostra a jornada do cliente desde a primeira visita ao perfil até a conversão final. Cada etapa mostra quantas pessoas chegaram àquele ponto no período.</div></div>
+    </div>
+    <div class="cs">Da visibilidade ao resultado — Ricardo Staffa</div>
+    <div class="funil-wrap" id="funilWrap"><div class="empty">Carregando…</div></div>
+  </div>
+
+  <hr class="sep">
+  <p class="sl">Evolução mensal</p>
+  <div class="cg2">
+    <div class="cc"><div class="ct">Alcance orgânico</div><div class="cs">Total de contas alcançadas por mês</div><div style="position:relative;height:190px"><canvas id="cAlcance"></canvas></div></div>
+    <div class="cc"><div class="ct">Novos seguidores</div><div class="cs">Crescimento da base por mês</div><div style="position:relative;height:190px"><canvas id="cSeguidores"></canvas></div></div>
+    <div class="cc"><div class="ct">Compartilhamentos</div><div class="cs">Indicador de promotores por mês</div><div style="position:relative;height:190px"><canvas id="cCompartilhamentos"></canvas></div></div>
+    <div class="cc"><div class="ct">Taxa de engajamento</div><div class="cs">Média mensal</div><div style="position:relative;height:190px"><canvas id="cEngajamento"></canvas></div></div>
+  </div>
+
+  <hr class="sep">
+  <p class="sl">Indicadores de reels</p>
+  <div class="rg" id="reelsGrid"></div>
+
+  <hr class="sep">
+  <p class="sl">Top posts em destaque</p>
+  <div class="posts-grid" id="topPostsGrid"></div>
+
+  <hr class="sep">
+  <p class="sl">Observações da Gabi</p>
+  <div class="ig" id="insightsGrid"></div>
+
+</main>
+
+<script>
+// ── ESTADO ──────────────────────────────────────────────────────────────
+let allPosts=[],allMetricas=[],allInsights=[],allTopPosts=[],allFunil=[];
+let tipo='organico', mesSel=null;
+let charts={}, tipAtual=null;
+const MESES_ORD=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+// ── HELPERS ─────────────────────────────────────────────────────────────
+const fmtN=n=>{if(n==null)return'—';const x=Number(n);if(isNaN(x))return'—';if(x>=1e6)return(x/1e6).toFixed(1)+'M';if(x>=1e3)return(x/1e3).toFixed(1)+'k';return Math.round(x).toLocaleString('pt-BR')};
+const fmtP=n=>{if(n==null||isNaN(Number(n)))return'—';return(Number(n)*100).toFixed(1)+'%'};
+const avg=(arr,k)=>{const v=arr.map(r=>r[k]).filter(x=>x!=null&&!isNaN(+x)).map(Number);return v.length?v.reduce((a,b)=>a+b,0)/v.length:0};
+const sum=(arr,k)=>arr.map(r=>Number(r[k])||0).reduce((a,b)=>a+b,0);
+
+// ── FILTROS ─────────────────────────────────────────────────────────────
+function getFiltered(){
+  let d=allPosts;
+  if(tipo==='organico') d=d.filter(r=>!r.impulsionado);
+  else if(tipo==='impulsionado') d=d.filter(r=>r.impulsionado);
+  if(mesSel) d=d.filter(r=>r.mes===mesSel);
+  return d;
+}
+function getMetFiltradas(){
+  if(!mesSel) return allMetricas;
+  return allMetricas.filter(m=>m.mes===mesSel);
+}
+
+// ── PERIOD DROPDOWN ─────────────────────────────────────────────────────
+function toggleDrop(e){
+  e.stopPropagation();
+  const d=document.getElementById('periodDrop');
+  d.classList.toggle('open');
+  document.getElementById('arr').textContent=d.classList.contains('open')?'▲':'▼';
+}
+document.addEventListener('click',()=>{
+  document.getElementById('periodDrop').classList.remove('open');
+  document.getElementById('arr').textContent='▼';
+});
+
+function buildMonthList(){
+  // Meses das métricas (com ano) + meses dos posts (sem duplicar)
+  const mesMap={};
+  allMetricas.forEach(m=>{
+    if(m.mes) mesMap[m.mes]={mes:m.mes,label:m.mes+(m.ano?' '+m.ano:'')};
+  });
+  allPosts.forEach(p=>{
+    if(p.mes&&!mesMap[p.mes]) mesMap[p.mes]={mes:p.mes,label:p.mes};
+  });
+  const lista=Object.values(mesMap).sort((a,b)=>MESES_ORD.indexOf(a.mes)-MESES_ORD.indexOf(b.mes));
+
+  let html=`<div class="period-item active" id="pi-todos" onclick="selMes(null,'Todos os meses')">Todos os meses</div>`;
+  lista.forEach(m=>{
+    html+=`<div class="period-item" id="pi-${m.mes}" onclick="selMes('${m.mes}','${m.label}')">${m.label}</div>`;
+  });
+  document.getElementById('monthList').innerHTML=html;
+}
+
+function selMes(mes,label){
+  mesSel=mes;
+  document.getElementById('pl').textContent=label;
+  document.querySelectorAll('.period-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById(mes?'pi-'+mes:'pi-todos')?.classList.add('active');
+  document.getElementById('periodDrop').classList.remove('open');
+  document.getElementById('arr').textContent='▼';
+  renderAll();
+}
+
+// ── TOOLTIP ─────────────────────────────────────────────────────────────
+function toggleTip(id,e){
+  e.stopPropagation();
+  const el=document.getElementById(id);
+  if(tipAtual&&tipAtual!==el) tipAtual.classList.remove('show');
+  el.classList.toggle('show');
+  tipAtual=el.classList.contains('show')?el:null;
+}
+document.addEventListener('click',()=>{if(tipAtual){tipAtual.classList.remove('show');tipAtual=null;}});
+
+// ── KPI CARD ─────────────────────────────────────────────────────────────
+let tc=0;
+function kpi(label,val,sub,cls,tip){
+  const id='tp'+(++tc);
+  return `<div class="kpi">
+    <div class="kl">${label}&nbsp;<button class="info-btn" onclick="toggleTip('${id}',event)">?</button>
+      <div class="kpi-tip" id="${id}"><div class="tip-t">${label}</div><div class="tip-b">${tip}</div></div>
+    </div>
+    <div class="kv">${val}</div>
+    <div class="ks ${cls||'neu'}">${sub}</div>
+  </div>`;
+}
+
+// ── RENDER KPIs ──────────────────────────────────────────────────────────
+function renderKPIs(data){
+  const met=getMetFiltradas();
+  const tPago=met.reduce((a,m)=>a+(+m.alcancePago||0),0);
+  const tVisitas=met.reduce((a,m)=>a+(+m.visitasPerfil||0),0);
+  const tCliques=met.reduce((a,m)=>a+(+m.cliquesLink||0),0);
+  const aEng=avg(data,'taxaEngajamento');
+  const aRet=avg(data,'retencao');
+
+  document.getElementById('kpiPosts').innerHTML=[
+    kpi('Posts publicados',data.length,'no período','neu','Total de conteúdos publicados no período — Reels, Carrosséis e Fotos.'),
+    kpi('Visualizações',fmtN(sum(data,'visualizacoes')),'total orgânico','neu','Quantas vezes seus vídeos foram assistidos. Um mesmo usuário pode gerar mais de uma visualização.'),
+    kpi('Curtidas',fmtN(sum(data,'curtidas')),'total no período','neu','Total de curtidas em todos os posts do período.'),
+    kpi('Compartilhamentos',fmtN(sum(data,'compartilhamentos')),'total no período','neu','Quantas vezes seu conteúdo foi enviado para outras pessoas. Principal sinal de identificação do público.'),
+    kpi('Salvamentos',fmtN(sum(data,'salvamentos')),'total no período','neu','Quando alguém salva o post para ver depois. Um dos sinais mais fortes de qualidade para o algoritmo do Instagram.'),
+    kpi('Novos seguidores',fmtN(sum(data,'novosSeguidores')),'via posts','good','Pessoas que passaram a seguir o perfil a partir dos posts publicados no período.'),
+    kpi('Taxa de engajamento',fmtP(aEng),aEng>=0.03?'acima da meta ✓':'abaixo de 3%',aEng>=0.03?'good':'warn','Interações (curtidas, comentários, compartilhamentos, salvamentos) divididas pelo alcance. Meta: acima de 3%.'),
+    kpi('Retenção média',aRet?aRet.toFixed(1)+'s':'—',aRet>=15?'acima de 15s ✓':'ref: ≥ 15s',aRet>=15?'good':'warn','Tempo médio que as pessoas assistem os Reels. O Instagram prioriza vídeos com retenção acima de 15s para distribuir para mais pessoas.'),
+  ].join('');
+
+  document.getElementById('kpiPerfil').innerHTML=[
+    kpi('Alcance orgânico',fmtN(tVisitas||sum(data,'alcanceOrganico')),'contas únicas','neu','Quantas pessoas únicas viram seu conteúdo sem investimento em anúncios.'),
+    kpi('Alcance pago',fmtN(tPago)||'—','via impulsionamento','neu','Total de contas alcançadas via anúncios e impulsionamentos no período.'),
+    kpi('Visitas ao perfil',fmtN(tVisitas),'no período','neu','Quantas vezes o perfil foi visitado. Indica interesse gerado pelo conteúdo.'),
+    kpi('Cliques no link',fmtN(tCliques),'na bio','neu','Cliques no link da bio. Indica intenção real — pessoas que saíram do Instagram para buscar mais informações.'),
+  ].join('');
+}
+
+// ── RENDER FUNIL SIMÉTRICO ────────────────────────────────────────────────
+function renderFunil(){
+  const met=getMetFiltradas();
+  const campoMap={
+    '👁 Visitas ao Perfil':'visitasPerfil',
+    '🔗 Cliques no Link':'cliquesLink',
+    '🏆 Leads':'leads',
+    '🏥 Pacientes':'pacientes',
+    '⚕️ Cirurgias':'cirurgias',
+  };
+
+  if(!allFunil.length){
+    document.getElementById('funilWrap').innerHTML='<div class="empty">Sem etapas de funil configuradas no Notion.</div>';
+    return;
+  }
+
+  const etapas=allFunil.map(e=>({
+    nome:e.etapa,
+    valor:met.reduce((a,m)=>a+(Number(m[campoMap[e.campoNotion]])||0),0),
+  }));
+
+  const n=etapas.length;
+  const W=240, TOP=210, BOT=50, H=n*64;
+
+  let svg='', leg='';
+  etapas.forEach((e,i)=>{
+    // Largura de cada etapa: diminui linearmente do topo para a base — SIMÉTRICO E FIXO
+    const w1=TOP-(TOP-BOT)*(i/(n>1?n-1:1));
+    const w2=TOP-(TOP-BOT)*((i+1)/(n>1?n-1:1));
+    const x1=(W-w1)/2, x2=(W-w2)/2;
+    const y=i*64;
+    const fill=i===n-1?'#1B2A35':'#8B2152';
+    const op=Math.max(1-i*0.13,0.4).toFixed(2);
+
+    svg+=`<polygon points="${x1.toFixed(1)},${y} ${(x1+w1).toFixed(1)},${y} ${(x2+w2).toFixed(1)},${y+60} ${x2.toFixed(1)},${y+60}" fill="${fill}" opacity="${op}"/>
+    <text x="${W/2}" y="${y+30}" text-anchor="middle" fill="white" font-size="13" font-weight="600">${fmtN(e.valor)||'—'}</text>
+    <text x="${W/2}" y="${y+47}" text-anchor="middle" fill="white" font-size="9" opacity="0.85">${e.nome.toUpperCase()}</text>`;
+
+    leg+=`<div style="display:flex;align-items:center;gap:10px">
+      <div style="width:10px;height:10px;border-radius:50%;background:${fill};opacity:${op};flex-shrink:0"></div>
+      <span style="font-size:13px;color:var(--text-muted);flex:1">${e.nome}</span>
+      <span style="font-size:16px;font-weight:700;font-family:'Syne',sans-serif;color:var(--text)">${fmtN(e.valor)||'—'}</span>
+    </div>`;
+  });
+
+  document.getElementById('funilWrap').innerHTML=`
+    <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="flex-shrink:0">${svg}</svg>
+    <div style="flex:1;display:flex;flex-direction:column;gap:14px">${leg}</div>`;
+}
+
+// ── RENDER CHARTS ────────────────────────────────────────────────────────
+function mkChart(id,cfg){if(charts[id]){charts[id].destroy();delete charts[id];}const ctx=document.getElementById(id);if(!ctx)return;charts[id]=new Chart(ctx,cfg);}
+const G='rgba(0,0,0,0.06)',T='rgba(0,0,0,0.4)';
+const BASE={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}};
+const AX=(cb)=>({x:{ticks:{color:T,font:{size:11}},grid:{display:false}},y:{ticks:{color:T,font:{size:11},callback:cb||(v=>fmtN(v))},grid:{color:G},border:{dash:[3,3]}}});
+
+function renderCharts(data){
+  const met=getMetFiltradas();
+  const meses=[...new Set([...data.map(r=>r.mes),...met.map(r=>r.mes)])].filter(Boolean).sort((a,b)=>MESES_ORD.indexOf(a)-MESES_ORD.indexOf(b));
+  if(!meses.length) return;
+  const alcData=meses.map(m=>{const r=met.find(x=>x.mes===m);return r?.alcanceOrganico||sum(data.filter(x=>x.mes===m),'alcanceOrganico');});
+  const segData=meses.map(m=>{const r=met.find(x=>x.mes===m);return r?.seguidoresGanhos||sum(data.filter(x=>x.mes===m),'novosSeguidores');});
+  const cmpData=meses.map(m=>sum(data.filter(x=>x.mes===m),'compartilhamentos'));
+  const engData=meses.map(m=>+(avg(data.filter(x=>x.mes===m),'taxaEngajamento')*100).toFixed(2));
+  mkChart('cAlcance',{type:'bar',data:{labels:meses,datasets:[{data:alcData,backgroundColor:'#8B2152',borderRadius:4}]},options:{...BASE,scales:AX()}});
+  mkChart('cSeguidores',{type:'bar',data:{labels:meses,datasets:[{data:segData,backgroundColor:'#1B2A35',borderRadius:4}]},options:{...BASE,scales:AX()}});
+  mkChart('cCompartilhamentos',{type:'bar',data:{labels:meses,datasets:[{data:cmpData,backgroundColor:'rgba(139,33,82,0.5)',borderRadius:4}]},options:{...BASE,scales:AX()}});
+  mkChart('cEngajamento',{type:'line',data:{labels:meses,datasets:[{data:engData,borderColor:'#8B2152',backgroundColor:'transparent',tension:0.4,pointRadius:4,pointBackgroundColor:'#8B2152'}]},options:{...BASE,scales:AX(v=>v+'%')}});
+}
+
+// ── RENDER REELS com ? ────────────────────────────────────────────────────
+function renderReels(data){
+  const reels=data.filter(r=>r.midia==='Reel');
+  const aRet=avg(reels,'retencao');
+  const aLik=avg(reels,'taxaCurtidas');
+  const aCmp=avg(reels,'taxaCompartilhamento');
+  const aEng=avg(reels,'taxaEngajamento');
+  const cards=[
+    {n:'Retenção média',r:'ref: ≥ 15s',v:aRet?aRet.toFixed(1)+'s':'—',pct:Math.min((aRet/15)*100,100),cls:aRet>=15?'good':aRet>=10?'warn':'bad',tip:'Tempo médio que as pessoas assistem os Reels. O Instagram só distribui para mais pessoas os vídeos com retenção acima de 15s — isso é o que faz um Reel viralizar.'},
+    {n:'Taxa de curtidas',r:'ref: ≥ 6,5%',v:fmtP(aLik),pct:Math.min((aLik/0.065)*100,100),cls:aLik>=0.065?'good':aLik>=0.04?'warn':'bad',tip:'Curtidas divididas pelo alcance. Indica o quanto o conteúdo agradou quem assistiu. Meta: acima de 6,5%.'},
+    {n:'Taxa de compartilhamento',r:'ref: ≥ 3%',v:fmtP(aCmp),pct:Math.min((aCmp/0.03)*100,100),cls:aCmp>=0.03?'good':aCmp>=0.015?'warn':'bad',tip:'Compartilhamentos divididos pelo alcance. É o indicador mais forte de identificação — a pessoa achou o conteúdo tão bom que quis mostrar para alguém. Meta: acima de 3%.'},
+    {n:'Taxa de engajamento',r:'concorrentes: 1,7%',v:fmtP(aEng),pct:Math.min((aEng/0.03)*100,100),cls:aEng>=0.03?'good':aEng>=0.02?'warn':'bad',tip:'Soma de todas as interações dividida pelo alcance. O perfil do Dr. Ricardo está acima da média dos concorrentes (1,7%).'},
+  ];
+  const barC={good:'#1B2A35',warn:'#b45309',bad:'#dc2626'};
+  document.getElementById('reelsGrid').innerHTML=cards.map((c,i)=>{
+    const id='treel'+i;
+    return `<div class="rc">
+      <div class="rn">${c.n}&nbsp;<button class="info-btn" onclick="toggleTip('${id}',event)">?</button>
+        <div class="kpi-tip" id="${id}"><div class="tip-t">${c.n}</div><div class="tip-b">${c.tip}</div></div>
+      </div>
+      <div class="rr">${c.r}</div>
+      <div class="rv ${c.cls}">${c.v}</div>
+      <div class="bt"><div class="bf" style="width:${Math.round(c.pct||0)}%;background:${barC[c.cls]}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ── RENDER TOP POSTS ──────────────────────────────────────────────────────
+function renderTopPosts(){
+  const grid=document.getElementById('topPostsGrid');
+  if(!allTopPosts.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">Nenhum post em destaque cadastrado ainda.<br><small>Adicione na base "📱 Top Posts em Destaque" no Notion.</small></div>';return;}
+  const bc={Reel:'pb-reel',Carrossel:'pb-carr',Foto:'pb-foto'};
+  grid.innerHTML=allTopPosts.map(p=>{
+    const lk=p.taxaCurtidas>=0.065?'good':p.taxaCurtidas>=0.04?'warn':'bad';
+    const ck=p.taxaCompartilhamento>=0.03?'good':p.taxaCompartilhamento>=0.015?'warn':'bad';
+    const rk=p.retencao>=15?'good':p.retencao>=10?'warn':'bad';
+    const thumb=p.capa?`<img src="${p.capa}" class="phone-img" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`:'' ;
+    const ph=`<div class="phone-ph"${p.capa?' style="display:none"':''}><div class="phone-ph-txt">${p.post||''}</div></div>`;
+    return `<div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-notch"></div>${thumb}${ph}
+        <div class="pbadge ${bc[p.midia]||'pb-reel'}">${p.midia||'Reel'}</div>
+        <div class="play-btn"><div class="play-icon"></div></div>
+      </div>
+      <div class="pm">
+        <div class="pm-row"><span class="pm-label">Retenção</span><span class="pm-val ${rk}">${p.retencao?p.retencao+'s':'—'}</span></div>
+        <div class="pm-row"><span class="pm-label">Curtidas</span><span class="pm-val ${lk}">${fmtP(p.taxaCurtidas)}</span></div>
+        <div class="pm-row"><span class="pm-label">Comp.</span><span class="pm-val ${ck}">${fmtP(p.taxaCompartilhamento)}</span></div>
+        <div class="pm-row"><span class="pm-label">Views</span><span class="pm-val">${fmtN(p.visualizacoes)}</span></div>
+      </div>
+      <div class="post-name">${p.post||'—'}</div>
+      ${p.linkPost?`<a class="btn-ver" href="${p.linkPost}" target="_blank" rel="noopener">Ver post</a>`:`<span class="btn-ver" style="opacity:.4;cursor:default">Sem link</span>`}
+    </div>`;
+  }).join('');
+}
+
+// ── RENDER INSIGHTS ───────────────────────────────────────────────────────
+function renderInsights(){
+  const grid=document.getElementById('insightsGrid');
+  if(!allInsights.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">Nenhuma observação publicada ainda.</div>';return;}
+  const tg=(t)=>t?.includes('Aprendizado')?'tl':t?.includes('Teste')?'tt2':t?.includes('Atenção')?'ta':'tw';
+  grid.innerHTML=allInsights.map(i=>`
+    <div class="ic">
+      <span class="tg ${tg(i.tipo)}">${i.tipo||'Observação'}</span>
+      <p class="it">${i.titulo||''}</p>
+    </div>`).join('');
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────────────────
+function renderAll(){
+  tc=0;
+  const data=getFiltered();
+  renderKPIs(data);
+  renderFunil();
+  renderCharts(data);
+  renderReels(data);
+  renderTopPosts();
+  renderInsights();
+}
+
+function setTipo(t){
+  tipo=t;
+  document.querySelectorAll('.tab:not(.disabled)').forEach((b,i)=>{
+    b.classList.toggle('active',['organico','impulsionado','todos'][i]===t);
+  });
+  renderAll();
+}
+
+// ── LOAD ──────────────────────────────────────────────────────────────────
+async function fetchD(t){try{return(await fetch('/api/notion?tipo='+t)).json();}catch(e){return{};}}
+
+async function init(){
+  document.getElementById('loadMsg').textContent='Carregando dados…';
+  const [rP,rM,rI,rT,rF]=await Promise.all([
+    fetchD('posts'),fetchD('metricas'),fetchD('insights'),fetchD('topposts'),fetchD('funil')
+  ]);
+  allPosts=rP.posts||[];
+  allMetricas=rM.metricas||[];
+  allInsights=rI.insights||[];
+  allTopPosts=rT.topPosts||[];
+  allFunil=rF.etapas||[];
+
+  buildMonthList();
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('mainContent').style.opacity='1';
+  renderAll();
+}
+
+init();
+</script>
+</body>
+</html>
