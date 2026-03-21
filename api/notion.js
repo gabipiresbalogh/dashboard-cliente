@@ -66,40 +66,44 @@ export default async function handler(req, res) {
 
   try {
     if (tipo === 'posts') {
-      // Busca posts que tenham data de publicação preenchida
+      // Busca TODOS os posts com data preenchida — filtra status no JS
       const filter = {
         property: 'Data da publicação',
         date: { is_not_empty: true }
       };
       const pages = await queryDB(DS_POSTS, filter);
-      const posts = pages.map(page => {
-        const p = page.properties;
-        const data = getProp(p, 'Data da publicação');
-        const mes = data ? (MESES[data.slice(5,7)] || null) : null;
-        const status = getProp(p, 'Status');
-        return {
-          id: page.id, mes, status,
-          impulsionado: getProp(p, 'Impulsionado') === true,
-          post: getProp(p, 'Post'),
-          data,
-          midia: getProp(p, 'Mídia'),
-          categoria: getProp(p, 'Categoria'),
-          faseJornada: getProp(p, 'Fase da jornada'),
-          visualizacoes: getProp(p, 'Visualizações'),
-          curtidas: getProp(p, 'Curtidas'),
-          comentarios: getProp(p, 'Comentários'),
-          compartilhamentos: getProp(p, 'Compartilhamentos'),
-          salvamentos: getProp(p, 'Salvamentos'),
-          alcanceOrganico: getProp(p, 'Alcance Orgânico'),
-          novosSeguidores: getProp(p, 'Novos seguidores'),
-          retencao: getProp(p, 'Retenção'),
-          taxa3s: getProp(p, 'Taxa de 3s'),
-          taxaEngajamento: getProp(p, 'Taxa de engajamento'),
-          taxaCurtidas: getProp(p, 'Taxa de curtidas'),
-          taxaCompartilhamento: getProp(p, 'Taxa de compartilhamento'),
-          linkPost: getProp(p, 'Link do post'),
-        };
-      }).filter(p => p.mes && p.status === 'Aprovado e agendado');
+      const posts = pages
+        .filter(page => {
+          const status = page.properties?.Status?.status?.name;
+          return status === 'Aprovado e agendado';
+        })
+        .map(page => {
+          const p = page.properties;
+          const data = getProp(p, 'Data da publicação');
+          const mes = data ? (MESES[data.slice(5,7)] || null) : null;
+          return {
+            id: page.id, mes,
+            impulsionado: getProp(p, 'Impulsionado') === true,
+            post: getProp(p, 'Post'),
+            data, mes,
+            midia: getProp(p, 'Mídia'),
+            categoria: getProp(p, 'Categoria'),
+            faseJornada: getProp(p, 'Fase da jornada'),
+            visualizacoes: getProp(p, 'Visualizações'),
+            curtidas: getProp(p, 'Curtidas'),
+            comentarios: getProp(p, 'Comentários'),
+            compartilhamentos: getProp(p, 'Compartilhamentos'),
+            salvamentos: getProp(p, 'Salvamentos'),
+            alcanceOrganico: getProp(p, 'Alcance Orgânico'),
+            novosSeguidores: getProp(p, 'Novos seguidores'),
+            retencao: getProp(p, 'Retenção'),
+            taxa3s: getProp(p, 'Taxa de 3s'),
+            taxaEngajamento: getProp(p, 'Taxa de engajamento'),
+            taxaCurtidas: getProp(p, 'Taxa de curtidas'),
+            taxaCompartilhamento: getProp(p, 'Taxa de compartilhamento'),
+            linkPost: getProp(p, 'Link do post'),
+          };
+        }).filter(p => p.mes);
       return res.status(200).json({ posts });
     }
 
